@@ -1,7 +1,7 @@
 #compilers
-CC=/usr/local/cuda-12.0/bin/nvcc
+CC=nvcc
 
-NVCC_FLAGS = -O3 -ccbin /usr/local/gcc-12.2/bin -m64 -gencode arch=compute_80,code=sm_80
+NVCC_FLAGS = -O3 -m64 -gencode arch=compute_80,code=sm_80
 
 # #ENVIRONMENT_PARAMETERS
 # CUDA_INSTALL_PATH = /usr/local/cuda-12.0

@@ -1,6 +1,8 @@
 # DASP
 Specific Dense Matrix Multiply-Accumulate Units Accelerated General Sparse Matrix-Vector Multiplication
 
+Adjusted for benchmarking compatible with MACKO-SpMV
+
 ## Paper
 
 This is the code of our paper published at SC '23:
@@ -35,6 +37,11 @@ Our test programs currently support input files encoded using the matrix market 
 `cd test`
 
 `sh run_double.sh`
+
+
+## Simple benchmarking
+- `nvcc -O3 -m64 -m64 -gencode arch=compute_75,code=sm_75  src/main_f16.cu -o spmv_half  -Xcompiler -fopenmp-simd -lcusparse -lcublas -lineinfo`
+- 
 
 ## Contact us
 

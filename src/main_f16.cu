@@ -1,4 +1,5 @@
 #include "dasp_f16.h"
+#include <cassert>
 
 int verify_new(MAT_VAL_TYPE *cusp_val, MAT_VAL_TYPE *cuda_val, int *new_order, int length)
 {
@@ -85,6 +86,20 @@ void cusparse_spmv_all(MAT_VAL_TYPE *cu_ValA, MAT_PTR_TYPE *cu_RowPtrA, int *cu_
     *cu_bandwidth2 = (double)data_origin2 / (*cu_time * 1e6); 
     printf("cusparse:%8.4lf ms, %8.4lf Gflop/s, %9.4lf GB/s, %9.4lf GB/s\n", *cu_time, *cu_gflops, *cu_bandwidth1, *cu_bandwidth2);
 
+    double time_us = (*cu_time) * 1000;
+    double dense_Gflops = (double)((long)rowA * colA * 2) / (time_us * 1e3);
+    double sparse_Gflops = (double)((long)nnzA * 2) / (time_us * 1e3);
+
+    float density = (float)nnzA / (float)(rowA * colA);
+    printf("Final results:\t%d\t%d\t%d\tDASPcuSPARSE\t%f\t%lf\t%lf\t%lf\n", 
+        16, rowA, colA, density, time_us, dense_Gflops, sparse_Gflops);
+    /*
+    cout << "Final results:\t" << params.bits_per_value << "\t" << params.M_rows << "\t" << params.M_cols << "\t" << params.kernel_id << "\t" << params.density
+         << "\t" << int(times_mean_us)
+         << "\t" << int(test_data.compute_dense_Gflops(times_mean_us))
+         << "\t" << int(test_data.compute_sparse_Gflops(times_mean_us))
+         << endl;
+    */
     cusparseDestroySpMat(matA);
     cusparseDestroyDnVec(vecX);
     cusparseDestroyDnVec(vecY);
@@ -99,12 +114,54 @@ void cusparse_spmv_all(MAT_VAL_TYPE *cu_ValA, MAT_PTR_TYPE *cu_RowPtrA, int *cu_
     cudaFree(dY);
 }
 
+int get_matrix(int M_rows, int M_cols, float density, MAT_PTR_TYPE &nnzA,
+    MAT_PTR_TYPE **csrRowPtr, int **csrColIdx, MAT_VAL_TYPE **csrVal){
+    nnzA = (MAT_PTR_TYPE)(M_rows * M_cols * density);
+    *csrRowPtr = (MAT_PTR_TYPE *)malloc((M_rows + 1) * sizeof(MAT_PTR_TYPE));
+    *csrColIdx = (int *)malloc(nnzA * sizeof(int));
+    *csrVal = (MAT_VAL_TYPE *)malloc(nnzA * sizeof(MAT_VAL_TYPE));
+
+    int size = M_cols * M_rows;
+    int nnz = int(density * float(size));
+    int zeros = size - nnz;
+
+    // sample mask & set values
+    int ones_to_sample = nnz;
+    int zeros_to_sample = zeros;
+    (*csrRowPtr)[0] = 0;
+    int sampled_ones = 0;
+
+    for (int row = 0; row < M_rows; row++)
+    {
+        for (int col = 0; col < M_cols; col++)
+        {
+            bool is_one = (rand() % (ones_to_sample + zeros_to_sample)) < ones_to_sample;
+            // Make the value zero
+            if (!is_one)
+            {
+                zeros_to_sample--;
+            }
+            else
+            {
+                (*csrColIdx)[sampled_ones] = col;
+                (*csrVal)[sampled_ones] = rand() % 20 * 0.1;
+
+                ones_to_sample--;
+                sampled_ones++;
+            }
+        }
+        (*csrRowPtr)[row + 1] = sampled_ones;
+    }
+    assert(sampled_ones == nnzA);
+    return 0;
+}
+
 __host__
 int main(int argc, char **argv)
 {
-    if (argc < 2)
+    if (argc < 4)
     {
-        printf("Run the code by './spmv_half matrix.mtx'.\n");
+        printf("Run the code by './spmv_half M_Rows M_cols density'.\n");
         return 0;
     }
 
@@ -119,16 +176,25 @@ int main(int argc, char **argv)
     MAT_PTR_TYPE *csrRowPtrA;
 
     char *filename;
-    filename = argv[1];
+    rowA = atoi(argv[1]);
+    colA = atoi(argv[2]);
+    float density = atof(argv[3]);
+    //filename = argv[4];
+    filename = "";
     // int NUM = atoi(argv[2]);
     // int block_longest = atoi(argv[3]);
     int NUM = 4;
     int block_longest = 256;
     double threshold = 0.75;
 
-    printf("\n===%s===\n\n", filename);
+    //printf("\n===%s===\n\n", filename);
 
-    mmio_allinone(&rowA, &colA, &nnzA, &isSymmetricA, &csrRowPtrA, &csrColIdxA, &csrValA, filename);
+    printf("Matrix size and density: %d %d %f\n", rowA, colA, density);
+
+    //mmio_allinone(&rowA, &colA, &nnzA, &isSymmetricA, &csrRowPtrA, &csrColIdxA, &csrValA, filename);
+    // instead of reading matrix from file, generate a random matrix
+    get_matrix(rowA, colA, density, nnzA, &csrRowPtrA, &csrColIdxA, &csrValA);
+
     MAT_VAL_TYPE *X_val = (MAT_VAL_TYPE *)malloc(sizeof(MAT_VAL_TYPE) * colA);
     initVec(X_val, colA);
     initVec(csrValA, nnzA);

@@ -1012,6 +1012,35 @@ __global__ void dasp_spmv(uint32_t *dX_val, uint32_t *dY_val,
     }
 }
 
+class CacheFlush
+{
+public:
+    int l2_cache_size;
+    size_t cache_flush_data_size;
+    int8_t *cache_flush_data_d;
+
+    CacheFlush(int device)
+    {
+        l2_cache_size = 0;
+        (cudaDeviceGetAttribute(&l2_cache_size, cudaDevAttrL2CacheSize, device));
+        cache_flush_data_size = l2_cache_size * 2;
+        (cudaMalloc((void **)&cache_flush_data_d, cache_flush_data_size));
+        (cudaDeviceSynchronize());
+    }
+
+    ~CacheFlush()
+    {
+        cudaFree(cache_flush_data_d);
+    }
+
+    void flush()
+    {
+        (cudaMemset((void *)cache_flush_data_d, 0, cache_flush_data_size));
+        (cudaDeviceSynchronize());
+        (cudaGetLastError());
+    }
+};
+
 __host__ void spmv_all(char *filename, MAT_VAL_TYPE *csrValA, MAT_PTR_TYPE *csrRowPtrA, int *csrColIdxA, 
                       MAT_VAL_TYPE *X_val, MAT_VAL_TYPE *Y_val, int *order_rid, int rowA, int colA, MAT_PTR_TYPE nnzA, int NUM, double threshold, int block_longest)
 {
@@ -1716,6 +1745,23 @@ __host__ void spmv_all(char *filename, MAT_VAL_TYPE *csrValA, MAT_PTR_TYPE *csrR
     double dasp_bandwidth2 = (double)data_X2 / (dasp_time_bypass * 1e6);
     printf("SpMV_X:  %8.4lf ms, %8.4lf GFlop/s, %9.4lf GB/s, %9.4lf GB/s\n", dasp_time, dasp_gflops, dasp_bandwidth1, dasp_bandwidth2);
     printf("SpMV_X2: %8.4lf ms, %8.4lf GFlop/s, %9.4lf GB/s, %9.4lf GB/s\n", dasp_time_bypass, dasp_gflops_bypass, dasp_bandwidth1, dasp_bandwidth2);
+
+    double time_us = (dasp_time) * 1000;
+    double dense_Gflops = (double)((long)rowA * colA * 2) / (time_us * 1e3);
+    double sparse_Gflops = (double)((long)nnzA * 2) / (time_us * 1e3);
+
+    float density = (float)nnzA / (float)(rowA * colA);
+    printf("Final results:\t%d\t%d\t%d\tDASP\t%f\t%lf\t%lf\t%lf\n", 
+        16, rowA, colA, density, time_us, dense_Gflops, sparse_Gflops);
+    // printf("\nrowA = %d, row_long = %d, row_block = %d, row_short1 = %d, common13 = %d, row_short_3 = %d, row_short_4 = %d, row_short_2 = %d\n", rowA, row_long, row_block, short_row_1, common_13, short_row_3, short_row_4, short_row_2);
+
+    time_us = (dasp_time_bypass) * 1000;
+    dense_Gflops = (double)((long)rowA * colA * 2) / (time_us * 1e3);
+    sparse_Gflops = (double)((long)nnzA * 2) / (time_us * 1e3);
+
+    density = (float)nnzA / (float)(rowA * colA);
+    printf("Final results:\t%d\t%d\t%d\tDASP2\t%f\t%lf\t%lf\t%lf\n", 
+        16, rowA, colA, density, time_us, dense_Gflops, sparse_Gflops);
 
     // printf("\nrowA = %d, row_long = %d, row_block = %d, row_short1 = %d, common13 = %d, row_short_3 = %d, row_short_4 = %d, row_short_2 = %d\n", rowA, row_long, row_block, short_row_1, common_13, short_row_3, short_row_4, short_row_2);
 
