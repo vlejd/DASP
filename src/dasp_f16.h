@@ -1798,12 +1798,6 @@ __host__ void spmv_all(char *filename, MAT_VAL_TYPE *csrValA, MAT_PTR_TYPE *csrR
 
     // int result = verify(Y_val2, Y_val, rowA, 1);
 
-    FILE* fout;
-    fout = fopen("data/spmv_f16_record.csv", "a");
-    fprintf(fout, "%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,", filename, rowA, colA, nnzA, short_row_1, common_13, short_row_3, short_row_4, short_row_2, row_long, row_block, nnz_short, fill0_nnz_short, nnz_long, fill0_nnz_long, origin_nnz_reg, fill0_nnz_reg, nnz_irreg);
-    fprintf(fout, "%lf,%d,%lld,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", rate_fill0, block_longest, data_X, dasp_pre, dasp_time, dasp_gflops, dasp_time_bypass, dasp_gflops_bypass, dasp_bandwidth1, dasp_bandwidth2);
-    fclose(fout);
-
     printf("\n");
 
     free(short_rid_1);

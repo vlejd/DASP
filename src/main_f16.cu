@@ -180,7 +180,7 @@ int main(int argc, char **argv)
     colA = atoi(argv[2]);
     float density = atof(argv[3]);
     //filename = argv[4];
-    filename = "";
+    filename = "\0";
     // int NUM = atoi(argv[2]);
     // int block_longest = atoi(argv[3]);
     int NUM = 4;
@@ -210,11 +210,6 @@ int main(int argc, char **argv)
     cusparse_spmv_all(csrValA, csrRowPtrA, csrColIdxA, X_val, dY_val, rowA, colA, nnzA, data_origin1, data_origin2, &pre_time, &cu_time, &cu_gflops, &cu_bandwidth1, &cu_bandwidth2);
 
     spmv_all(filename, csrValA, csrRowPtrA, csrColIdxA, X_val, Y_val, new_order, rowA, colA, nnzA, NUM, threshold, block_longest);
-
-    FILE* fout;
-    fout = fopen("data/spmv_f16_record.csv", "a");
-    fprintf(fout, "%lld,%lf,%lf,%lf,%lf,%lf\n", data_origin1, pre_time, cu_time, cu_gflops, cu_bandwidth1, cu_bandwidth2);
-    fclose(fout);
 
     // int result = verify_new(dY_val, Y_val, new_order, rowA);
 

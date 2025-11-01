@@ -16,7 +16,7 @@ for ((i=0; i<${#Rs[@]}; i++)); do
     R=${Rs[i]}
     C=${Cs[i]}
 
-    for d in 1.0 0.9 0.8 0.7 0.6 0.5 0.4 0.3 0.2 0.1 0.05;
+    for d in "1.0" "0.9" "0.8" "0.7" "0.6" "0.5" "0.4" "0.3" "0.2" "0.1" "0.05" ;
     do
         partial_result_file=${base_results}/partial/${R}_${C}_${algo}_${d}.txt
         ./spmv_half $R $C $d > $partial_result_file
