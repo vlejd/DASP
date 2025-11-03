@@ -12,6 +12,7 @@
 
 #include "common.h"
 #include "utils.h"
+#include <chrono>
 
 class CacheFlush
 {
@@ -1761,6 +1762,19 @@ __host__ void spmv_all(char *filename, MAT_VAL_TYPE *csrValA, MAT_PTR_TYPE *csrR
         }
     }
 
+    int kernel_start_reps = 100;
+    double kernel_launch_time_us = 0.0;
+    for (int kernel_start_rep = 0; kernel_start_rep < kernel_start_reps; kernel_start_rep++)
+    {
+        auto chrono_start = std::chrono::high_resolution_clock::now();
+        dasp_spmv2<1><<<BlockNum_all, ThreadNum_all>>>(PARAMS);
+        longPart_sum<<<sumBlockNum, ThreadNum_all>>>(dlong_ptr_warp, dval_by_warp, dY_val, row_long);
+        auto chrono_end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(chrono_end - chrono_start);
+        kernel_launch_time_us += double(duration.count());
+    }
+    kernel_launch_time_us = kernel_launch_time_us / kernel_start_reps;
+
     double dasp_time = (dasp_duration_us/1000) / execute_time;
     double dasp_gflops = (double)((long)nnzA * 2) / (dasp_time * 1e6);
     double dasp_time_bypass = (dasp_bypass_duration_us/1000) / execute_time;
@@ -1769,7 +1783,7 @@ __host__ void spmv_all(char *filename, MAT_VAL_TYPE *csrValA, MAT_PTR_TYPE *csrR
     double dasp_bandwidth2 = (double)data_X2 / (dasp_time_bypass * 1e6);
     printf("SpMV_X:  %8.4lf ms, %8.4lf GFlop/s, %9.4lf GB/s, %9.4lf GB/s\n", dasp_time, dasp_gflops, dasp_bandwidth1, dasp_bandwidth2);
     printf("SpMV_X2: %8.4lf ms, %8.4lf GFlop/s, %9.4lf GB/s, %9.4lf GB/s\n", dasp_time_bypass, dasp_gflops_bypass, dasp_bandwidth1, dasp_bandwidth2);
-
+    printf("Kernel launch time: %lf\n", kernel_launch_time_us);
     double time_us = (dasp_time) * 1000;
     double dense_Gflops = (double)((long)rowA * colA * 2) / (time_us * 1e3);
     double sparse_Gflops = (double)((long)nnzA * 2) / (time_us * 1e3);
