@@ -41,7 +41,7 @@ Our test programs currently support input files encoded using the matrix market 
 
 ## Simple benchmarking
 - specify your arch and run: `nvcc -O3 -m64 -m64 -gencode arch=compute_75,code=sm_75  src/main_f16.cu -o spmv_half  -Xcompiler -fopenmp-simd -lcusparse -lcublas -lineinfo`
-- `bash run_test.sh`
+- `bash run_tests.sh`
 
 ## Contact us
 
